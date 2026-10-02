@@ -98,11 +98,15 @@ test('Meal plan builds meals and logs one to today', async () => {
   expect(screen.getByText('Your cutting day')).toBeTruthy();
   const logButtons = screen.getAllByText('Log to today');
   expect(logButtons.length).toBe(4);
+  expect(screen.getByText('Plan total, 4 meals')).toBeTruthy();
   await fireEvent.press(logButtons[0]);
   expect((readState().logs[todayStr()] ?? []).length).toBeGreaterThan(0);
+  // Breakfast is now eaten, and the other meals are resized to what's left of the day.
+  expect(screen.getByText('Logged')).toBeTruthy();
+  expect(screen.getAllByText('Log to today').length).toBe(3);
+  expect(screen.getByText('Eaten so far plus the meals left')).toBeTruthy();
   await fireEvent.press(screen.getAllByText('Swap meal')[1]);
   await fireEvent.press(screen.getByText('Shuffle all meals'));
-  expect(screen.getByText('Plan total, 4 meals')).toBeTruthy();
 });
 
 test('Search and add a food', async () => {

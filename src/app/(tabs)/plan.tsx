@@ -40,7 +40,9 @@ export default function PlanScreen() {
     );
   }
 
-  const plan = buildPlan(profile, picks);
+  const today = app.logs[todayStr()] ?? [];
+  const plan = buildPlan(profile, picks, today);
+  const ateToday = plan.eaten[0] > 0;
   const { T: tg } = plan;
   const color = goalColor(pal, profile.goal);
   const title = tg.mode === 'cut' ? 'Your cutting day' : tg.mode === 'bulk' ? 'Your bulking day' : 'Your maintenance day';
@@ -66,6 +68,11 @@ export default function PlanScreen() {
       <T style={{ marginTop: 8 }}>
         The plan targets <T v="label">{fmt(tg.kcal)} kcal</T> with <T v="label">{fmt(tg.protein)} g protein</T>, {fmt(tg.carbs)} g carbs and {fmt(tg.fat)} g fat, {weekly}.
       </T>
+      {ateToday ? (
+        <T style={{ marginTop: 8 }}>
+          You’ve eaten <T v="label">{fmt(plan.eaten[0])} kcal</T> and {fmt(plan.eaten[1])} g protein so far today. The meals you haven’t logged are sized to what’s left.
+        </T>
+      ) : null}
       {tg.notes.length ? (
         <View style={{ gap: 8, marginTop: 14 }}>
           {tg.notes.map((n, i) => <NoteBox key={i} text={n.text} warn={n.warn} color={color} />)}
@@ -76,7 +83,25 @@ export default function PlanScreen() {
         <Btn title="Change goal or diet" kind="ghost" small onPress={() => router.navigate('/body')} />
       </View>
 
-      {plan.meals.map(m => (
+      {plan.meals.map(m => m.status !== 'open' ? (
+        <View key={m.slot.key}>
+          <SectionRule />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <T v="small" color={pal.muted}>{m.slot.label}</T>
+              <T v="h3">{m.status === 'logged' ? 'Logged' : 'Target reached'}</T>
+            </View>
+            {m.status === 'logged' && m.tot[0] > 0 ? <T v="label">{fmt(m.tot[0])} kcal</T> : null}
+          </View>
+          <T color={pal.muted} style={{ marginTop: 6 }}>
+            {m.status === 'full'
+              ? "You've already hit today's calories, so there's nothing planned here. If you're hungry, have vegetables or fruit."
+              : m.tot[0] > 0
+                ? 'Already in your log for today.'
+                : `Covered by the ${m.slot.log} you've logged.`}
+          </T>
+        </View>
+      ) : (
         <View key={m.slot.key}>
           <SectionRule />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
@@ -109,7 +134,7 @@ export default function PlanScreen() {
         <NutritionLabel
           tot={plan.day}
           T={tg}
-          sub={`Plan total, ${plan.meals.length} meals`}
+          sub={ateToday ? 'Eaten so far plus the meals left' : `Plan total, ${plan.meals.length} meals`}
           goalColor={color}
           footnote="Portions snap to easy amounts (half cups, whole eggs), so totals land close to target rather than exactly on it."
         />

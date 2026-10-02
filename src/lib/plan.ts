@@ -1,6 +1,6 @@
 import { FOOD, Food, Role, Template, TemplateKind, TEMPLATE, TEMPLATES, emptyNutrients, sumItems } from './foods';
 import { Diet, Profile, Targets, clamp, computeTargets } from './nutrition';
-import type { SlotKey } from './store';
+import type { Entry, SlotKey } from './store';
 
 export interface PlanSlot {
   key: string;
@@ -104,16 +104,69 @@ export function solveMeal(t: Template, tgt: { kcal: number; p: number; c: number
   return items.filter(it => it.s > 0);
 }
 
-export interface PlannedMeal { slot: PlanSlot; tpl: Template; items: PlanItem[]; tot: number[] }
-export interface Plan { T: Targets; meals: PlannedMeal[]; day: number[] }
+/**
+ * - `open`: still to eat, sized to its share of what's left of today's targets.
+ * - `logged`: food is already logged for this meal; `tot` is what was eaten.
+ * - `full`: today's targets are already met, so there's nothing worth planning here.
+ */
+export type MealStatus = 'open' | 'logged' | 'full';
+export interface PlannedMeal { slot: PlanSlot; tpl: Template; items: PlanItem[]; tot: number[]; status: MealStatus }
+export interface Plan { T: Targets; meals: PlannedMeal[]; day: number[]; eaten: number[] }
 
-export function buildPlan(profile: Profile, picks: Record<string, string>): Plan {
+/** Below this, a planned meal is too small to be worth eating. */
+export const MIN_MEAL_KCAL = 120;
+
+export const entryTotals = (entries: Entry[]) =>
+  entries.reduce((t, e) => { e.n.forEach((v, i) => { t[i] += (v || 0) * e.s; }); return t; }, emptyNutrients());
+
+/**
+ * Which plan slots today's log already covers. The first plan slot for a log slot counts as eaten
+ * once anything is logged there. When two plan slots share one (the afternoon and evening snacks),
+ * the later one also counts once the calories logged there pass the earlier ones' share plus half its own.
+ */
+export function coveredSlots(slots: PlanSlot[], dailyKcal: number, entries: Entry[]): Set<string> {
+  const covered = new Set<string>();
+  const before: Partial<Record<SlotKey, number>> = {};
+  for (const sl of slots) {
+    const logged = entryTotals(entries.filter(e => e.slot === sl.log))[0];
+    const prior = before[sl.log] ?? 0;
+    const share = dailyKcal * sl.k;
+    if (logged > 0 && (prior === 0 || logged >= prior + share / 2)) covered.add(sl.key);
+    before[sl.log] = prior + share;
+  }
+  return covered;
+}
+
+/**
+ * Build today's plan. Meals already logged are marked as eaten, and the rest are sized to whatever is
+ * left of the day's targets, split by each meal's usual share. With nothing logged this is the full day.
+ */
+export function buildPlan(profile: Profile, picks: Record<string, string>, entries: Entry[] = []): Plan {
   const T = computeTargets(profile);
-  const meals = planSlots(T.kcal).map(slot => {
+  const slots = planSlots(T.kcal);
+  const eaten = entryTotals(entries);
+  const covered = coveredSlots(slots, T.kcal, entries);
+  const open = slots.filter(sl => !covered.has(sl.key));
+  const kShare = open.reduce((a, sl) => a + sl.k, 0);
+  const pShare = open.reduce((a, sl) => a + sl.p, 0);
+  const left = (target: number, i: number) => Math.max(0, target - eaten[i]);
+  const rest = { kcal: left(T.kcal, 0), p: left(T.protein, 1), c: left(T.carbs, 2), f: left(T.fat, 3) };
+
+  const shown = new Set<SlotKey>();
+  const meals = slots.map((slot): PlannedMeal => {
     const tpl = TEMPLATE[picks[slot.key]];
-    const items = solveMeal(tpl, { kcal: T.kcal * slot.k, p: T.protein * slot.p, c: T.carbs * slot.k, f: T.fat * slot.k });
-    return { slot, tpl, items, tot: sumItems(items) };
+    if (covered.has(slot.key)) {
+      // Show what was eaten once per log slot, so shared snack slots don't double count.
+      const tot = shown.has(slot.log) ? emptyNutrients() : entryTotals(entries.filter(e => e.slot === slot.log));
+      shown.add(slot.log);
+      return { slot, tpl, items: [], tot, status: 'logged' };
+    }
+    const k = slot.k / kShare;
+    const tgt = { kcal: rest.kcal * k, p: rest.p * (slot.p / pShare), c: rest.c * k, f: rest.f * k };
+    if (tgt.kcal < MIN_MEAL_KCAL) return { slot, tpl, items: [], tot: emptyNutrients(), status: 'full' };
+    const items = solveMeal(tpl, tgt);
+    return { slot, tpl, items, tot: sumItems(items), status: 'open' };
   });
-  const day = meals.reduce((a, m) => a.map((v, i) => v + m.tot[i]), emptyNutrients());
-  return { T, meals, day };
+  const day = meals.filter(m => m.status === 'open').reduce((a, m) => a.map((v, i) => v + m.tot[i]), eaten.slice());
+  return { T, meals, day, eaten };
 }
