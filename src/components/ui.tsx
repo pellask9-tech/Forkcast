@@ -1,316 +1,187 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import type { ComponentProps, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type StyleProp,
-  type TextInputProps,
-  type TextStyle,
-  type ViewStyle,
+  ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, TextInput, TextInputProps, TextProps, TextStyle, View, ViewStyle,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
-import { formatAmount, NUTRIENT_INFO, type NutrientKey } from '@/lib/nutrients';
+import { F, usePalette } from '@/theme';
 
-import { usePalette } from './theme';
+const tap = () => { Haptics.selectionAsync().catch(() => {}); };
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
+type Variant = 'body' | 'small' | 'tiny' | 'label' | 'h3' | 'h2' | 'title' | 'display' | 'brand';
+const TV = StyleSheet.create({
+  body: { fontFamily: F.regular, fontSize: 16, lineHeight: 23 },
+  small: { fontFamily: F.regular, fontSize: 14, lineHeight: 20 },
+  tiny: { fontFamily: F.medium, fontSize: 12, lineHeight: 16 },
+  label: { fontFamily: F.bold, fontSize: 15, lineHeight: 20 },
+  h3: { fontFamily: F.xbold, fontSize: 18, lineHeight: 23 },
+  h2: { fontFamily: F.xbold, fontSize: 22, lineHeight: 27, letterSpacing: -0.3 },
+  title: { fontFamily: F.black, fontSize: 34, lineHeight: 37, letterSpacing: -0.8 },
+  display: { fontFamily: F.black, fontSize: 64, lineHeight: 66, letterSpacing: -2 },
+  brand: { fontFamily: F.black, fontSize: 22, lineHeight: 26, letterSpacing: -0.4 },
+});
 
-export function Screen({ children }: { children: ReactNode }) {
-  const c = usePalette();
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.background }}
-      contentContainerStyle={styles.screen}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled">
-      {children}
-    </ScrollView>
-  );
+export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: Variant; color?: string }) {
+  const pal = usePalette();
+  return <Text {...rest} style={[TV[v], { color: color ?? pal.ink, fontVariant: ['tabular-nums'] }, style]} />;
 }
 
-type TextVariant = 'display' | 'title' | 'heading' | 'body' | 'muted' | 'small';
-
-export function T({
-  variant = 'body',
-  color,
-  style,
-  children,
-  numberOfLines,
+export function Btn({
+  title, onPress, kind = 'primary', small, disabled, loading, style, color, icon,
 }: {
-  variant?: TextVariant;
-  color?: string;
-  style?: StyleProp<TextStyle>;
-  children: ReactNode;
-  numberOfLines?: number;
-}) {
-  const c = usePalette();
-  const muted = variant === 'muted' || variant === 'small';
-  return (
-    <Text numberOfLines={numberOfLines} style={[textStyles[variant], { color: color ?? (muted ? c.muted : c.text) }, style]}>
-      {children}
-    </Text>
-  );
-}
-
-export function Card({
-  title,
-  right,
-  children,
-  style,
-}: {
-  title?: string;
-  right?: ReactNode;
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const c = usePalette();
-  return (
-    <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }, style]}>
-      {(title || right) && (
-        <View style={styles.cardHeader}>
-          {title ? <T variant="heading">{title}</T> : <View />}
-          {right}
-        </View>
-      )}
-      {children}
-    </View>
-  );
-}
-
-export function ProgressBar({
-  value,
-  max,
-  color,
-  overColor,
-  height = 8,
-}: {
-  value: number;
-  max: number;
-  color: string;
-  /** Color once value passes max; defaults to `color`. */
-  overColor?: string;
-  height?: number;
-}) {
-  const c = usePalette();
-  const ratio = max > 0 ? value / max : 0;
-  return (
-    <View style={{ height, borderRadius: height / 2, backgroundColor: c.track, overflow: 'hidden' }}>
-      <View
-        style={{
-          width: `${Math.min(1, ratio) * 100}%`,
-          height: '100%',
-          borderRadius: height / 2,
-          backgroundColor: ratio > 1 && overColor ? overColor : color,
-        }}
-      />
-    </View>
-  );
-}
-
-/** One nutrient with a progress bar against its daily target or limit. */
-export function NutrientRow({
-  nutrient,
-  value,
-  target,
-  color,
-}: {
-  nutrient: NutrientKey;
-  value: number;
-  target: number;
-  color: string;
-}) {
-  const c = usePalette();
-  const info = NUTRIENT_INFO[nutrient];
-  const pct = target > 0 ? Math.round((value / target) * 100) : 0;
-  const over = info.kind === 'limit' && value > target;
-  return (
-    <View style={styles.nutrientRow}>
-      <View style={styles.rowBetween}>
-        <T>{info.label}</T>
-        <T variant="small" color={over ? c.danger : undefined}>
-          {formatAmount(value, info.unit)} / {formatAmount(target, info.unit)}
-          {info.kind === 'limit' ? ' max' : ''} · {pct}%
-        </T>
-      </View>
-      <ProgressBar value={value} max={target} color={color} overColor={info.kind === 'limit' ? c.danger : undefined} height={6} />
-    </View>
-  );
-}
-
-export function Button({
-  label,
-  onPress,
-  variant = 'primary',
-  icon,
-  disabled,
-  compact,
-}: {
-  label: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
-  icon?: IconName;
+  title: string;
+  onPress?: () => void;
+  kind?: 'primary' | 'ghost' | 'goal';
+  small?: boolean;
   disabled?: boolean;
-  compact?: boolean;
+  loading?: boolean;
+  style?: StyleProp<ViewStyle>;
+  color?: string;
+  icon?: ReactNode;
 }) {
-  const c = usePalette();
-  const bg = variant === 'primary' ? c.primary : variant === 'danger' ? c.dangerSoft : c.primarySoft;
-  const fg = variant === 'primary' ? c.primaryText : variant === 'danger' ? c.danger : c.primary;
+  const pal = usePalette();
+  const bg = kind === 'ghost' ? 'transparent' : kind === 'goal' ? color ?? pal.cut : pal.ink;
+  const fg = kind === 'ghost' ? pal.ink : kind === 'goal' ? pal.onGoal : pal.paper;
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
+      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
+      disabled={disabled || loading}
+      onPress={() => { tap(); onPress?.(); }}
       style={({ pressed }) => [
-        styles.button,
-        compact && styles.buttonCompact,
-        { backgroundColor: bg, opacity: disabled ? 0.45 : pressed ? 0.8 : 1 },
+        {
+          backgroundColor: bg,
+          borderColor: kind === 'ghost' ? pal.line : bg,
+          borderWidth: 1.5,
+          borderRadius: 999,
+          paddingVertical: small ? 8 : 13,
+          paddingHorizontal: small ? 14 : 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 8,
+          opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
+        },
+        style,
       ]}>
-      {icon && <Ionicons name={icon} size={compact ? 16 : 18} color={fg} />}
-      <Text style={[styles.buttonLabel, compact && { fontSize: 14 }, { color: fg }]}>{label}</Text>
+      {loading ? <ActivityIndicator color={fg} /> : icon}
+      <Text style={{ fontFamily: F.bold, fontSize: small ? 14 : 16, color: fg }}>{title}</Text>
     </Pressable>
   );
 }
 
-export function Segmented<V extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: V; label: string }[];
-  value: V;
-  onChange: (v: V) => void;
-}) {
-  const c = usePalette();
-  return (
-    <View style={[styles.segmented, { backgroundColor: c.track }]}>
-      {options.map((o) => {
-        const active = o.value === value;
-        return (
-          <Pressable
-            key={o.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(o.value)}
-            style={[styles.segment, active && { backgroundColor: c.card, borderColor: c.border }]}>
-            <Text style={[styles.segmentLabel, { color: active ? c.text : c.muted }]}>{o.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-export function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const c = usePalette();
+export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const pal = usePalette();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={[
-        styles.chip,
-        { borderColor: active ? c.primary : c.border, backgroundColor: active ? c.primarySoft : c.card },
-      ]}>
-      <Text style={{ color: active ? c.primary : c.text, fontWeight: '600', fontSize: 14 }}>{label}</Text>
+      accessibilityState={{ selected }}
+      onPress={() => { tap(); onPress(); }}
+      style={{
+        borderWidth: 1.5,
+        borderColor: selected ? pal.ink : pal.line,
+        backgroundColor: selected ? pal.ink : pal.surface,
+        borderRadius: 999,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+      }}>
+      <Text style={{ fontFamily: F.semibold, fontSize: 14, color: selected ? pal.paper : pal.ink }}>{label}</Text>
     </Pressable>
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Segmented<V extends string | number>({
+  options, value, onChange,
+}: { options: { value: V; label: string }[]; value: V | undefined; onChange: (v: V) => void }) {
   return (
-    <View style={styles.field}>
-      <T variant="small" style={styles.fieldLabel}>
-        {label}
-      </T>
-      {children}
-      {hint && <T variant="small">{hint}</T>}
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }} accessibilityRole="radiogroup">
+      {options.map(o => (
+        <Chip key={String(o.value)} label={o.label} selected={o.value === value} onPress={() => onChange(o.value)} />
+      ))}
     </View>
   );
 }
 
-export function Input({ suffix, style, ...props }: TextInputProps & { suffix?: string }) {
-  const c = usePalette();
+export function Field({ label, suffix, style, ...props }: TextInputProps & { label: string; suffix?: string }) {
+  const pal = usePalette();
   return (
-    <View style={[styles.input, { borderColor: c.border, backgroundColor: c.card }, style as StyleProp<ViewStyle>]}>
-      <TextInput placeholderTextColor={c.muted} style={[styles.inputText, { color: c.text }]} {...props} />
-      {suffix && <T variant="muted">{suffix}</T>}
+    <View style={[{ flex: 1, minWidth: 90 }, style as StyleProp<ViewStyle>]}>
+      <Text style={{ fontFamily: F.semibold, fontSize: 14, color: pal.ink, marginBottom: 5 }}>{label}</Text>
+      <View style={{ justifyContent: 'center' }}>
+        <TextInput
+          placeholderTextColor={pal.muted}
+          {...props}
+          style={{
+            fontFamily: F.medium,
+            fontSize: 17,
+            color: pal.ink,
+            backgroundColor: pal.surface,
+            borderWidth: 1.5,
+            borderColor: pal.line,
+            borderRadius: 12,
+            paddingVertical: 11,
+            paddingLeft: 12,
+            paddingRight: suffix ? 40 : 12,
+          }}
+        />
+        {suffix ? (
+          <Text style={{ position: 'absolute', right: 12, fontFamily: F.regular, fontSize: 15, color: pal.muted }} pointerEvents="none">
+            {suffix}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-export function MacroPills({ calories, protein, carbs, fat }: { calories: number; protein: number; carbs: number; fat: number }) {
-  const c = usePalette();
+export function Stepper({ label, onMinus, onPlus, minusDisabled }: { label: string; onMinus: () => void; onPlus: () => void; minusDisabled?: boolean }) {
+  const pal = usePalette();
+  const b: ViewStyle = { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' };
+  const bt: TextStyle = { fontFamily: F.bold, fontSize: 24, color: pal.ink, lineHeight: 28 };
   return (
-    <View style={styles.pills}>
-      <T variant="small" style={styles.pillStrong}>
-        {Math.round(calories).toLocaleString('en-US')} kcal
-      </T>
-      <T variant="small" color={c.protein}>
-        P {Math.round(protein)}g
-      </T>
-      <T variant="small" color={c.carbs}>
-        C {Math.round(carbs)}g
-      </T>
-      <T variant="small" color={c.fat}>
-        F {Math.round(fat)}g
-      </T>
+    <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: pal.line, borderRadius: 999, backgroundColor: pal.paper, alignSelf: 'flex-start' }}>
+      <Pressable accessibilityLabel="Less" disabled={minusDisabled} onPress={() => { tap(); onMinus(); }} style={[b, { opacity: minusDisabled ? 0.3 : 1 }]}>
+        <Text style={bt}>−</Text>
+      </Pressable>
+      <Text style={{ fontFamily: F.xbold, fontSize: 16, color: pal.ink, minWidth: 120, textAlign: 'center' }} accessibilityLiveRegion="polite">{label}</Text>
+      <Pressable accessibilityLabel="More" onPress={() => { tap(); onPlus(); }} style={b}>
+        <Text style={bt}>+</Text>
+      </Pressable>
     </View>
   );
 }
 
-export const styles = StyleSheet.create({
-  screen: { padding: 16, gap: 16, paddingBottom: 48, width: '100%', maxWidth: 720, alignSelf: 'center' },
-  card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 12 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nutrientRow: { gap: 6 },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-  },
-  buttonCompact: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10 },
-  buttonLabel: { fontSize: 16, fontWeight: '600' },
-  segmented: { flexDirection: 'row', borderRadius: 12, padding: 3 },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 9,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'transparent',
-  },
-  segmentLabel: { fontSize: 15, fontWeight: '600' },
-  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1 },
-  field: { gap: 6 },
-  fieldLabel: { fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    gap: 8,
-  },
-  inputText: { flex: 1, fontSize: 17, paddingVertical: 12, minWidth: 0 },
-  pills: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  pillStrong: { fontWeight: '700' },
-});
+export function Dot({ color }: { color: string }) {
+  return <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: color, marginRight: 5 }} />;
+}
 
-const textStyles = StyleSheet.create({
-  display: { fontSize: 40, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  title: { fontSize: 24, fontWeight: '700' },
-  heading: { fontSize: 17, fontWeight: '700' },
-  body: { fontSize: 16 },
-  muted: { fontSize: 15 },
-  small: { fontSize: 13 },
-});
+export function MacroLine({ p, c, f, style }: { p: number; c: number; f: number; style?: StyleProp<ViewStyle> }) {
+  const pal = usePalette();
+  const item = (color: string, text: string) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Dot color={color} />
+      <T v="small">{text}</T>
+    </View>
+  );
+  return (
+    <View style={[{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 14, rowGap: 4 }, style]}>
+      {item(pal.protein, `${Math.round(p)} g protein`)}
+      {item(pal.carb, `${Math.round(c)} g carbs`)}
+      {item(pal.fat, `${Math.round(f)} g fat`)}
+    </View>
+  );
+}
+
+export function NoteBox({ text, warn, color }: { text: string; warn?: boolean; color?: string }) {
+  const pal = usePalette();
+  return (
+    <View style={{ borderLeftWidth: 4, borderLeftColor: warn ? pal.danger : color ?? pal.cut, backgroundColor: pal.surface, paddingVertical: 11, paddingHorizontal: 13, borderTopRightRadius: 10, borderBottomRightRadius: 10 }}>
+      <T v="small">{text}</T>
+    </View>
+  );
+}
+
+export function SectionRule() {
+  const pal = usePalette();
+  return <View style={{ height: 2, backgroundColor: pal.ink, marginTop: 26, marginBottom: 8 }} />;
+}

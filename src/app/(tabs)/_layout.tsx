@@ -1,40 +1,27 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router/js-tabs';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
-import { usePalette } from '@/components/theme';
+import { usePalette } from '@/theme';
 
-export default function TabLayout() {
-  const c = usePalette();
+export default function TabsLayout() {
+  const pal = usePalette();
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: c.primary, tabBarInactiveTintColor: c.muted }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Today',
-          tabBarIcon: ({ color, size }) => <Ionicons name="today-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="plan"
-        options={{
-          title: 'Meal plan',
-          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="log"
-        options={{
-          title: 'Add food',
-          tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" size={size} color={color} />,
-        }}
-      />
-    </Tabs>
+    <NativeTabs
+      backgroundColor={pal.paper}
+      indicatorColor={pal.soft}
+      tintColor={pal.ink}
+      labelStyle={{ selected: { color: pal.ink } }}>
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="plan">
+        <NativeTabs.Trigger.Label>Meal plan</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="list.bullet.clipboard" md="event_note" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="body">
+        <NativeTabs.Trigger.Label>Body</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="figure.stand" md="monitor_weight" />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }

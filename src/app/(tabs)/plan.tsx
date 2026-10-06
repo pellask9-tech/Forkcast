@@ -1,164 +1,119 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { usePalette } from '@/components/theme';
-import { Button, Card, MacroPills, Screen, styles, T } from '@/components/ui';
-import { describeAmount, getFood } from '@/lib/foods';
-import {
-  MEAL_SLOTS,
-  defaultChoice,
-  recommendMeals,
-  remainingMealTargets,
-  type MealSlot,
-  type PlannedMeal,
-} from '@/lib/mealPlan';
-import { calculateTargets, STRATEGY_LABELS } from '@/lib/nutrition';
-import { dateKey, daySeed, useDayLog, useProfile } from '@/state/store';
+import { NutritionLabel } from '@/components/NutritionLabel';
+import { AppHeader, Screen } from '@/components/Screen';
+import { Btn, MacroLine, NoteBox, SectionRule, T } from '@/components/ui';
+import { qtyText } from '@/lib/foods';
+import { computeTargets, fmt, fmtW } from '@/lib/nutrition';
+import { buildPlan, ensurePicks, pickTemplate, planSlots } from '@/lib/plan';
+import { addEntries, setPicks, todayStr, useAppState } from '@/lib/store';
+import { goalColor, usePalette } from '@/theme';
 
-export default function Plan() {
-  const c = usePalette();
-  const profile = useProfile();
-  const date = dateKey();
-  const targets = useMemo(() => calculateTargets(profile), [profile]);
-  const day = useDayLog(date);
-  const [choice, setChoice] = useState<Partial<Record<MealSlot, number>>>({});
+export default function PlanScreen() {
+  const pal = usePalette();
+  const app = useAppState();
+  const [logged, setLogged] = useState<string | null>(null);
+  const profile = app.profile;
 
-  const slotTargets = useMemo(
-    () => remainingMealTargets(targets.daily, profile.goal, day.bySlot),
-    [targets, profile.goal, day.bySlot],
-  );
-  const recommendations = useMemo(
-    () =>
-      Object.fromEntries(
-        MEAL_SLOTS.map(({ id }) => {
-          const t = slotTargets[id];
-          return [id, t ? recommendMeals(id, t, profile) : null];
-        }),
-      ) as Record<MealSlot, PlannedMeal[] | null>,
-    [slotTargets, profile],
-  );
+  // Pick a meal for every slot (and replace any that no longer fit the diet or calorie level).
+  const picks = useMemo(() => {
+    if (!profile) return null;
+    return ensurePicks(app.picks, computeTargets(profile).kcal, profile.diet);
+  }, [profile, app.picks]);
 
-  const seed = daySeed(date);
-  const selected = Object.fromEntries(
-    MEAL_SLOTS.map(({ id }, i) => {
-      const recs = recommendations[id];
-      if (!recs || recs.length === 0) return [id, null];
-      return [id, recs[(choice[id] ?? defaultChoice(recs, seed + i)) % recs.length]];
-    }),
-  ) as Record<MealSlot, PlannedMeal | null>;
+  useEffect(() => {
+    if (picks && picks !== app.picks) setPicks(picks);
+  }, [picks, app.picks]);
 
-  const projected = MEAL_SLOTS.reduce(
-    (acc, { id }) => {
-      const source = slotTargets[id] === null ? day.bySlot[id] : selected[id]?.totals;
-      if (source) for (const k of ['calories', 'protein', 'carbs', 'fat'] as const) acc[k] += source[k];
-      return acc;
-    },
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
-  );
+  if (!profile || !picks) {
+    return (
+      <Screen>
+        <AppHeader />
+        <T v="title">Your meal plan starts with your BMI</T>
+        <T color={pal.muted} style={{ marginTop: 10, marginBottom: 18 }}>
+          Enter your height, weight and goal. The plan sizes every meal to your calorie and protein targets for cutting or bulking.
+        </T>
+        <Btn title="Set up body stats" style={{ alignSelf: 'flex-start' }} onPress={() => router.navigate('/body')} />
+      </Screen>
+    );
+  }
+
+  const plan = buildPlan(profile, picks);
+  const { T: tg } = plan;
+  const color = goalColor(pal, profile.goal);
+  const title = tg.mode === 'cut' ? 'Your cutting day' : tg.mode === 'bulk' ? 'Your bulking day' : 'Your maintenance day';
+  const weekly = Math.abs(tg.weekly) < 0.05 ? 'holding your weight steady' : `about ${fmtW(Math.abs(tg.weekly), profile.units)} ${tg.weekly < 0 ? 'lost' : 'gained'} per week`;
+
+  const swap = (key: string) => {
+    const sl = planSlots(tg.kcal).find(s => s.key === key)!;
+    setPicks({ ...picks, [key]: pickTemplate(sl.kind, profile.diet, Object.values(picks)) });
+  };
+  const logMeal = (key: string) => {
+    const m = plan.meals.find(x => x.slot.key === key);
+    if (!m) return;
+    addEntries(todayStr(), m.items.map(it => ({ fid: it.f.id, name: it.f.name, unit: it.f.unit, n: it.f.n.slice(), s: +it.s.toFixed(3), slot: m.slot.log, via: 'plan' as const })));
+    setLogged(key);
+    setTimeout(() => setLogged(null), 1800);
+  };
 
   return (
     <Screen>
-      <Card>
-        <View style={styles.row}>
-          <View style={{ backgroundColor: c.primarySoft, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}>
-            <T variant="small" color={c.primary} style={{ fontWeight: '700' }}>
-              {STRATEGY_LABELS[targets.strategy].toUpperCase()}
-            </T>
-          </View>
-          <T variant="small">BMI {targets.bmi.toFixed(1)}</T>
+      <AppHeader />
+      <T v="title">{title}</T>
+      <T style={{ marginTop: 10 }}>{tg.summary}</T>
+      <T style={{ marginTop: 8 }}>
+        The plan targets <T v="label">{fmt(tg.kcal)} kcal</T> with <T v="label">{fmt(tg.protein)} g protein</T>, {fmt(tg.carbs)} g carbs and {fmt(tg.fat)} g fat, {weekly}.
+      </T>
+      {tg.notes.length ? (
+        <View style={{ gap: 8, marginTop: 14 }}>
+          {tg.notes.map((n, i) => <NoteBox key={i} text={n.text} warn={n.warn} color={color} />)}
         </View>
-        <T variant="title">{targets.daily.calories.toLocaleString('en-US')} kcal a day</T>
-        <MacroPills {...targets.daily} />
-        {targets.notes.map((n) => (
-          <T key={n} variant="muted">
-            {n}
-          </T>
-        ))}
-        <T variant="small">Meals you haven’t logged adjust to whatever is left of today’s targets.</T>
-      </Card>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+        <Btn title="Shuffle all meals" kind="ghost" small onPress={() => setPicks(ensurePicks(null, tg.kcal, profile.diet))} />
+        <Btn title="Change goal or diet" kind="ghost" small onPress={() => router.navigate('/body')} />
+      </View>
 
-      {MEAL_SLOTS.map((slot, i) => {
-        const recs = recommendations[slot.id];
-        const meal = selected[slot.id];
-
-        if (recs === null) {
-          return (
-            <Card
-              key={slot.id}
-              title={slot.label}
-              right={
-                <View style={styles.row}>
-                  <Ionicons name="checkmark-circle" size={18} color={c.primary} />
-                  <T variant="small" color={c.primary} style={{ fontWeight: '700' }}>
-                    Logged
-                  </T>
-                </View>
-              }>
-              <MacroPills {...day.bySlot[slot.id]} />
-            </Card>
-          );
-        }
-
-        if (!meal) {
-          return (
-            <Card key={slot.id} title={slot.label}>
-              <T variant="muted">
-                You’ve already reached today’s targets, so there’s nothing planned here. If you’re hungry, go for
-                vegetables or a piece of fruit.
-              </T>
-            </Card>
-          );
-        }
-
-        const index = recs.indexOf(meal);
-        const target = slotTargets[slot.id]!;
-        return (
-          <Card key={slot.id} title={slot.label} right={<T variant="small">Option {index + 1} of {recs.length}</T>}>
-            <T variant="heading" style={{ fontSize: 19 }}>
-              {meal.name}
-            </T>
-            <MacroPills {...meal.totals} />
-            <T variant="small">
-              Aiming for ≈ {Math.round(target.calories)} kcal and {Math.round(target.protein)} g protein
-            </T>
-            <View style={{ gap: 6 }}>
-              {meal.items.map((item) => (
-                <View key={item.foodId} style={styles.rowBetween}>
-                  <T style={{ flex: 1 }}>{getFood(item.foodId).name}</T>
-                  <T variant="muted">{describeAmount(item.foodId, item.grams)}</T>
-                </View>
-              ))}
+      {plan.meals.map(m => (
+        <View key={m.slot.key}>
+          <SectionRule />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <T v="small" color={pal.muted}>{m.slot.label}</T>
+              <T v="h3">{m.tpl.name}</T>
             </View>
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  label="Swap"
-                  variant="secondary"
-                  icon="shuffle"
-                  disabled={recs.length < 2}
-                  onPress={() => setChoice({ ...choice, [slot.id]: index + 1 })}
-                />
+            <T v="label">{fmt(m.tot[0])} kcal</T>
+          </View>
+          <View style={{ marginTop: 6 }}>
+            {m.items.map(it => (
+              <View key={it.f.id} style={{ flexDirection: 'row', gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: pal.line }}>
+                <View style={{ flex: 1 }}>
+                  <T>{it.f.name}</T>
+                  <T v="small" color={pal.muted}>{qtyText(it.f.unit, it.s)}</T>
+                </View>
+                <T v="small" color={pal.muted}>{fmt(it.f.n[0] * it.s)} kcal</T>
               </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  label="Log meal"
-                  icon="checkmark"
-                  onPress={() => day.add(meal.items.map((it) => ({ ...it, slot: slot.id })))}
-                />
-              </View>
-            </View>
-          </Card>
-        );
-      })}
+            ))}
+          </View>
+          <MacroLine p={m.tot[1]} c={m.tot[2]} f={m.tot[3]} style={{ marginTop: 10, marginBottom: 12 }} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Btn title={logged === m.slot.key ? 'Logged' : 'Log to today'} small disabled={logged === m.slot.key} onPress={() => logMeal(m.slot.key)} />
+            <Btn title="Swap meal" kind="ghost" small onPress={() => swap(m.slot.key)} />
+          </View>
+        </View>
+      ))}
 
-      <Card title="Today with this plan">
-        <MacroPills {...projected} />
-        <T variant="small">
-          Goal: {targets.daily.calories.toLocaleString('en-US')} kcal · P {targets.daily.protein} g · C{' '}
-          {targets.daily.carbs} g · F {targets.daily.fat} g
-        </T>
-      </Card>
+      <View style={{ marginTop: 30 }}>
+        <NutritionLabel
+          tot={plan.day}
+          T={tg}
+          sub={`Plan total, ${plan.meals.length} meals`}
+          goalColor={color}
+          footnote="Portions snap to easy amounts (half cups, whole eggs), so totals land close to target rather than exactly on it."
+        />
+      </View>
     </Screen>
   );
 }
