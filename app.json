@@ -43,7 +43,8 @@
           "cameraPermission": "Forkcast uses the camera to scan your meals and estimate their nutrition.",
           "photosPermission": "Forkcast lets you pick a meal photo to estimate its nutrition."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": false,

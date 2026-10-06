@@ -185,7 +185,10 @@ test('Body check: pick a photo, get muscle focus, saved to history', async () =>
   await waitFor(() => expect(screen.getByText('Your results')).toBeTruthy());
   expect(screen.getByText('Your focus plan')).toBeTruthy();
   expect(screen.getByText('Lateral raises')).toBeTruthy();
-  expect(screen.getAllByText('Train more').length).toBe(2);
+  // Two muscle pills plus the body map legend.
+  expect(screen.getAllByText('Train more').length).toBe(3);
+  expect(screen.getByLabelText(/Body map\. Train more: Shoulders, Quads\./)).toBeTruthy();
+  expect(screen.getByText('Shoulders · Train more')).toBeTruthy();
   expect(readState().bodyChecks.length).toBe(1);
   spy.mockRestore();
 });

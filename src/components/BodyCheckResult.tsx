@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 
+import { BodyMap } from '@/components/BodyMap';
 import { T } from '@/components/ui';
 import type { BodyCheck, MuscleStatus } from '@/lib/store';
 import { F, Palette, usePalette } from '@/theme';
@@ -48,6 +49,10 @@ export function BodyCheckResult({ check }: { check: Pick<BodyCheck, 'summary' | 
   return (
     <View>
       <T>{check.summary}</T>
+
+      <View style={{ marginTop: 16 }}>
+        <BodyMap groups={check.groups} />
+      </View>
 
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
         <Tally pal={pal} n={counts.strong} label="strong points" color={pal.fat} />

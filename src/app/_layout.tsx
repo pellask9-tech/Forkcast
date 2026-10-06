@@ -39,6 +39,7 @@ export default function RootLayout() {
         <Stack.Screen name="scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="body-check" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="program" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );

@@ -107,7 +107,8 @@ function BodyCheckInner() {
         <T v="title" style={{ marginBottom: 12 }}>Your results</T>
         <BodyCheckResult check={result} />
         <T v="tiny" color={pal.muted} style={{ marginTop: 18 }}>Saved to your body check history. Photos were not saved. This is training guidance, not medical advice.</T>
-        <Btn title="Done" style={{ marginTop: 18 }} onPress={() => router.back()} />
+        <Btn title="Get my weekly program" style={{ marginTop: 18 }} onPress={() => { router.back(); router.push('/program'); }} />
+        <Btn title="Done" kind="ghost" style={{ marginTop: 10 }} onPress={() => router.back()} />
       </Screen>
     );
   }

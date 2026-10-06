@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react';
 
 import type { Food, Unit } from './foods';
 import type { Profile } from './nutrition';
+import { weekKey, type DaysPerWeek, type Equipment } from './program';
 
 export type SlotKey = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
 export const SLOTS: [SlotKey, string][] = [
@@ -59,12 +60,17 @@ export interface AppState {
   /** ml of water per day */
   water: Record<string, number>;
   bodyChecks: BodyCheck[];
+  training: Training;
 }
+
+/** Weekly program settings and the sessions ticked off in the current week. */
+export interface Training { days: DaysPerWeek; equipment: Equipment; week: string; done: string[] }
+const DEFAULT_TRAINING: Training = { days: 3, equipment: 'gym', week: '', done: [] };
 
 const PREFIX = 'forkcast:v1:';
 let state: AppState = {
   ready: false, profile: null, customFoods: [], weights: [], picks: null, logs: {},
-  pro: false, proPlan: null, scanDay: '', scanCount: 0, water: {}, bodyChecks: [],
+  pro: false, proPlan: null, scanDay: '', scanCount: 0, water: {}, bodyChecks: [], training: DEFAULT_TRAINING,
 };
 const listeners = new Set<() => void>();
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
@@ -98,6 +104,7 @@ const persistMeta = () => save('meta', { pro: state.pro, proPlan: state.proPlan,
 const persistLog = (date: string) => save('log:' + date, state.logs[date] ?? []);
 const persistWater = () => save('water', state.water);
 const persistBody = () => save('body', state.bodyChecks);
+const persistTraining = () => save('training', state.training);
 
 export async function hydrate() {
   try {
@@ -123,6 +130,8 @@ export async function hydrate() {
         patch.water = v;
       } else if (k === 'body' && Array.isArray(v)) {
         patch.bodyChecks = v;
+      } else if (k === 'training' && v && typeof v === 'object') {
+        patch.training = { ...DEFAULT_TRAINING, ...v, done: Array.isArray(v.done) ? v.done : [] };
       } else if (k.startsWith('log:') && Array.isArray(v)) {
         patch.logs![k.slice(4)] = v;
       }
@@ -222,4 +231,23 @@ export function saveBodyCheck(c: Omit<BodyCheck, 'id' | 'd'>) {
 export function deleteBodyCheck(id: string) {
   set({ bodyChecks: state.bodyChecks.filter(b => b.id !== id) });
   persistBody();
+}
+
+/* ---------------- Training ---------------- */
+export function setTrainingPrefs(patch: Partial<Pick<Training, 'days' | 'equipment'>>) {
+  // Changing the plan changes which sessions exist, so this week's ticks start over.
+  set({ training: { ...state.training, ...patch, week: weekKey(new Date()), done: [] } });
+  persistTraining();
+}
+
+/** Sessions done this week. Ticks from an earlier week don't count. */
+export function doneThisWeek(t: Training): string[] {
+  return t.week === weekKey(new Date()) ? t.done : [];
+}
+
+export function toggleWorkout(dayId: string) {
+  const done = doneThisWeek(state.training);
+  const next = done.includes(dayId) ? done.filter(d => d !== dayId) : [...done, dayId];
+  set({ training: { ...state.training, week: weekKey(new Date()), done: next } });
+  persistTraining();
 }

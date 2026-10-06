@@ -10,7 +10,8 @@ import {
   ACTIVITY, Cutoffs, DIETS, Diet, Goal, LB, Pace, Profile, Sex, Units,
   clamp, computeTargets, fmt, fmt1, fmtW, fmtWr, modeWord, validateProfile,
 } from '@/lib/nutrition';
-import { logWeight, parseD, saveProfile, useAppState } from '@/lib/store';
+import { GROUP_NAMES, buildProgram } from '@/lib/program';
+import { doneThisWeek, logWeight, parseD, saveProfile, useAppState } from '@/lib/store';
 import { IS_TEST_STORE, resetTestPurchase } from '@/lib/subscription';
 import { F, Palette, usePalette } from '@/theme';
 
@@ -46,6 +47,11 @@ export default function BodyScreen() {
   const [weightIn, setWeightIn] = useState('');
   const [showCheck, setShowCheck] = useState(false);
   const latest = app.bodyChecks[app.bodyChecks.length - 1];
+  const program = useMemo(
+    () => buildProgram({ check: latest ?? null, goal: app.profile?.goal ?? 'cut', days: app.training.days, equipment: app.training.equipment }),
+    [latest, app.profile?.goal, app.training.days, app.training.equipment],
+  );
+  const programDone = doneThisWeek(app.training);
   const candidate = useMemo(() => profileFrom(d), [d]);
   const error = validateProfile(candidate);
 
@@ -205,6 +211,15 @@ export default function BodyScreen() {
 
             </>
           ) : null}
+
+          <SectionRule />
+          <T v="h2">Weekly program</T>
+          <T color={pal.muted} style={{ marginTop: 6 }}>
+            {latest
+              ? `${program.priority.length ? `Bringing up your ${program.priority.map(g => GROUP_NAMES[g].toLowerCase()).join(', ')}. ` : ''}${programDone.length} of ${program.days.length} sessions done this week.`
+              : `A ${app.training.days}-day plan for your ${app.profile.goal === 'bulk' ? 'bulk' : 'cut'}. ${programDone.length} of ${program.days.length} sessions done this week.`}
+          </T>
+          <Btn title="Open my program" style={{ marginTop: 12, alignSelf: 'flex-start' }} onPress={() => router.push('/program')} />
 
           <SectionRule />
           <T v="h2">Weight log</T>
