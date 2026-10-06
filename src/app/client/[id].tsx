@@ -86,7 +86,9 @@ function ClientInner() {
             {s.profile.mode === 'cut' ? 'Cutting' : s.profile.mode === 'bulk' ? 'Bulking' : 'Maintaining'} · BMI {s.profile.bmi} ({s.profile.bmiLabel}) ·{' '}
             {fmtW(s.profile.weightKg, s.profile.units)} · {s.profile.age} · {s.profile.sex === 'f' ? 'female' : 'male'}
           </T>
-          <T v="tiny" color={pal.muted} style={{ marginTop: 2 }}>Updated {ago(snap!.updated_at)}</T>
+          <T v="tiny" color={pal.muted} style={{ marginTop: 2 }}>
+            {s.level ? `Level ${s.level.level} · ${s.level.title} · ` : ''}Updated {ago(snap!.updated_at)}
+          </T>
 
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
             <Stat label="Avg calories, 7 days" value={avg!.loggedDays ? fmt(avg!.kcal) : '–'} sub={`target ${fmt(s.targets.kcal)}`} />

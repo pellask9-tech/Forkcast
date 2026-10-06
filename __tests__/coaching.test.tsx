@@ -80,8 +80,9 @@ beforeEach(() => {
 
 describe('buildSnapshot', () => {
   const now = new Date(2026, 9, 6, 12);
-  const state: Pick<AppState, 'profile' | 'logs' | 'weights' | 'bodyChecks' | 'training'> = {
+  const state: Pick<AppState, 'profile' | 'logs' | 'weights' | 'bodyChecks' | 'training' | 'water'> = {
     profile,
+    water: {},
     logs: {
       '2026-10-06': [{ id: 'e1', fid: 'egg', name: 'Secret snack', unit: { kind: 'custom', label: '1' }, n: [500, 30, 40, 20], s: 2, slot: 'lunch' }],
       '2026-10-05': [{ id: 'e2', fid: 'egg', name: 'Egg', unit: { kind: 'custom', label: '1' }, n: [300, 20, 10, 10], s: 1, slot: 'breakfast' }],
@@ -89,7 +90,7 @@ describe('buildSnapshot', () => {
     },
     weights: [{ d: '2026-10-01', kg: 62.4 }],
     bodyChecks: [{ id: 'b', d: '2026-10-02', summary: 'Good base.', groups: [], focus: [], balance: '', views: ['front'] }],
-    training: { days: 4, equipment: 'home', week: '2026-10-05', done: ['d1', 'd2'] },
+    training: { days: 4, equipment: 'home', week: '2026-10-05', done: ['d1', 'd2'], history: [] },
   };
 
   it('shares daily totals for the last 14 days, not the foods themselves', () => {
@@ -148,7 +149,7 @@ test('Member requests a coach after seeing what will be shared', async () => {
   await fireEvent.changeText(screen.getByPlaceholderText(/lean bulk/), 'Bulk and fix shoulders');
   await fireEvent.press(screen.getByText('Request coaching'));
   expect(mockApi.requestCoach).toHaveBeenCalledWith('c1', 'Bulk and fix shoulders');
-  view.rerender(<SafeAreaProvider initialMetrics={metrics}><CoachProfileScreen /></SafeAreaProvider>);
+  await view.rerender(<SafeAreaProvider initialMetrics={metrics}><CoachProfileScreen /></SafeAreaProvider>);
   await waitFor(() => expect(screen.getByText(/Request sent/)).toBeTruthy());
 });
 
@@ -208,9 +209,9 @@ test('Coach views a client’s progress and sends a note', async () => {
   mockMe = { ready: true, userId: 'c1', email: 'ana@example.com', role: 'coach', displayName: 'Ana', link: null };
   mockParams = { id: 'm2', name: 'Cara Diaz', link: 'l2' };
   const snap = buildSnapshot({
-    profile, logs: { [new Date().toISOString().slice(0, 10)]: [] }, weights: [{ d: '2026-10-01', kg: 62 }, { d: '2026-10-05', kg: 62.6 }],
+    profile, water: {}, logs: { [new Date().toISOString().slice(0, 10)]: [] }, weights: [{ d: '2026-10-01', kg: 62 }, { d: '2026-10-05', kg: 62.6 }],
     bodyChecks: [{ id: 'b', d: '2026-10-02', summary: 'Strong legs.', groups: [{ id: 'shoulders', name: 'Shoulders', status: 'needs_work', note: 'Smaller.' }], focus: [], balance: '', views: ['front'] }],
-    training: { days: 3, equipment: 'gym', week: '', done: [] },
+    training: { days: 3, equipment: 'gym', week: '', done: [], history: [] },
   })!;
   mockApi.getClientSnapshot.mockResolvedValueOnce({ data: snap, updated_at: new Date().toISOString() } as any);
   await render(<ClientScreen />);

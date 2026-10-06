@@ -1,15 +1,17 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { LevelCard, LevelUp } from '@/components/Level';
 import { AI_FEATURES, PAYWALL } from '@/config';
 import { NutritionLabel } from '@/components/NutritionLabel';
 import { Screen } from '@/components/Screen';
 import { T } from '@/components/ui';
 import { emptyNutrients, qtyText } from '@/lib/foods';
 import { Targets, computeTargets, fmt, fmt1 } from '@/lib/nutrition';
-import { Entry, GLASS_ML, SLOTS, addWater, logStreak, parseD, removeEntry, shiftD, todayStr, useAppState, waterGoal } from '@/lib/store';
+import { Entry, GLASS_ML, SLOTS, addWater, logStreak, parseD, removeEntry, setSeenLevel, shiftD, todayStr, useAppState, waterGoal } from '@/lib/store';
+import { dayChecklist, earned, levelFor, totalXp } from '@/lib/xp';
 import { FREE_SCANS_PER_DAY, bodyCheckWaitDays, scansLeftToday } from '@/lib/subscription';
 import { F, Palette, goalColor, useIsDark, usePalette } from '@/theme';
 
@@ -35,6 +37,11 @@ export default function TodayScreen() {
   const streak = logStreak(app.logs);
   const scansLeft = scansLeftToday();
   const bodyWait = bodyCheckWaitDays();
+  const level = levelFor(useMemo(() => totalXp(app), [app]).total);
+  const xpToday = earned(dayChecklist(app, todayStr()));
+  // First run after this update: start from the current level instead of celebrating old ones.
+  useEffect(() => { if (app.seenLevel === 0) setSeenLevel(level.level); }, [app.seenLevel, level.level]);
+  const levelledUp = app.seenLevel > 0 && level.level > app.seenLevel;
 
   const confirmRemove = (e: Entry) =>
     Alert.alert('Remove this food?', `${e.name}, ${qtyText(e.unit, e.s)}`, [
@@ -64,6 +71,13 @@ export default function TodayScreen() {
         <RoundBtn pal={pal} icon="left" label="Previous day" onPress={() => setDate(shiftD(date, -1))} />
         <RoundBtn pal={pal} icon="right" label="Next day" disabled={isToday} onPress={() => setDate(shiftD(date, 1))} />
       </View>
+
+      {/* Level */}
+      {levelledUp ? (
+        <LevelUp info={level} color={color} onDone={() => setSeenLevel(level.level)} />
+      ) : (
+        <LevelCard info={level} today={xpToday} color={color} onPress={() => router.push('/levels')} />
+      )}
 
       {/* Dashboard */}
       {targets ? <Dashboard pal={pal} tot={tot} tg={targets} color={color} /> : <SetupCard pal={pal} />}

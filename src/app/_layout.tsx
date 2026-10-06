@@ -44,6 +44,7 @@ export default function RootLayout() {
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="body-check" options={{ presentation: 'modal' }} />
         <Stack.Screen name="program" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="levels" options={{ presentation: 'modal' }} />
         <Stack.Screen name="account" options={{ presentation: 'modal' }} />
         <Stack.Screen name="coach-edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="coaches/[id]" options={{ presentation: 'modal' }} />

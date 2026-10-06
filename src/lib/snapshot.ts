@@ -6,6 +6,7 @@
 import { computeTargets } from './nutrition';
 import { weekKey } from './program';
 import type { AppState, BodyCheck, Entry } from './store';
+import { levelFor, totalXp } from './xp';
 
 export const SNAPSHOT_DAYS = 14;
 
@@ -22,6 +23,7 @@ export interface ClientSnapshot {
   weights: { d: string; kg: number }[];
   bodyCheck: Pick<BodyCheck, 'd' | 'summary' | 'groups' | 'focus' | 'balance'> | null;
   training: { daysPerWeek: number; equipment: string; doneThisWeek: number };
+  level?: { level: number; title: string; xp: number };
 }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -33,7 +35,7 @@ function dayTotals(entries: Entry[]) {
   return t;
 }
 
-export function buildSnapshot(state: Pick<AppState, 'profile' | 'logs' | 'weights' | 'bodyChecks' | 'training'>, now = new Date()): ClientSnapshot | null {
+export function buildSnapshot(state: Pick<AppState, 'profile' | 'logs' | 'weights' | 'bodyChecks' | 'training' | 'water'>, now = new Date()): ClientSnapshot | null {
   const p = state.profile;
   if (!p) return null;
   const T = computeTargets(p);
@@ -60,6 +62,7 @@ export function buildSnapshot(state: Pick<AppState, 'profile' | 'logs' | 'weight
     weights: state.weights.slice(-30),
     bodyCheck: check ? { d: check.d, summary: check.summary, groups: check.groups, focus: check.focus, balance: check.balance } : null,
     training: { daysPerWeek: t.days, equipment: t.equipment, doneThisWeek: t.week === weekKey(now) ? t.done.length : 0 },
+    level: (({ level, title, xp }) => ({ level, title, xp }))(levelFor(totalXp(state).total)),
   };
 }
 

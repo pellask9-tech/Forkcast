@@ -7,7 +7,8 @@ AI photo scanning and a subscription paywall. Built with Expo (SDK 57) and Expo 
 
 | Screen | What it does |
 | --- | --- |
-| **Today** | Nutrition Facts label for the day (calories, macros, fiber, sugars, sodium, 10 vitamins and minerals), meal log, search and scan buttons |
+| **Today** | Level & XP card, Nutrition Facts label for the day (calories, macros, fiber, sugars, sodium, 10 vitamins and minerals), meal log, search and scan buttons |
+| **Levels** (modal) | Your level, title and XP, today's XP checklist, where your XP came from, and the title ladder |
 | **Meal plan** | A full day of meals sized to your targets, with swap, shuffle and "log to today" |
 | **Body** | Goal (cut or bulk), pace, stats, BMI with scale, calorie and macro targets, weekly program, weight log, Pro status |
 | **Weekly program** (modal) | A 3, 4 or 5-day gym or home plan built from your latest body check: "train more" muscles go first with extra sets, strong points get maintenance sets, cuts add cardio. Tick off sessions each week |
@@ -19,6 +20,28 @@ AI photo scanning and a subscription paywall. Built with Expo (SDK 57) and Expo 
 
 The scan server lives in `src/app/api/scan+api.ts`. It runs on your computer while `npx expo start`
 is running, so your API key never ships inside the app.
+
+## Levels & XP
+
+People earn XP for healthy habits and level up, with a celebration the first time they reach each level.
+XP is worked out from what's already saved, so nothing is double counted and existing users start with
+the XP they've earned. Change the amounts in `XP` and the titles in `TITLES` in `src/lib/xp.ts`.
+
+| Action | XP |
+| --- | --- |
+| Log any food that day | 10 |
+| Each meal logged (breakfast, lunch, dinner, snack) | 5 |
+| Land within 10% of the calorie target | 20 |
+| Hit the protein target | 15 |
+| Hit the water goal | 10 |
+| Log your weight | 5 |
+| Each day of a 7+ day logging streak | 10 |
+| Tick off a workout from the weekly program | 30 |
+| Do a body check | 50 |
+
+Level 2 needs 100 XP, and each level after needs 50 more than the last (an active day earns about
+100 XP). Titles: Rookie, Starter (2), Regular (3), Committed (5), Dedicated (8), Athlete (12), Pro (16),
+Elite (20), Legend (30). Coaches see their client's level.
 
 ## Coaching (optional)
 
@@ -188,6 +211,7 @@ src/
     (tabs)/body.tsx      Body & BMI
     (tabs)/coach.tsx     Coach tab: directory, your coach, coach dashboard
     program.tsx          weekly training program
+    levels.tsx           levels, XP checklist and titles
     account.tsx          sign in / create account
     coach-edit.tsx       coach's own profile editor
     coaches/[id].tsx     public coach profile and coaching request
@@ -201,6 +225,7 @@ src/
     nutrition.ts         BMI, calorie and macro targets
     plan.ts              meal plan builder (sizes the meals you haven't logged to what's left today)
     program.ts           weekly training program from the body check
+    xp.ts                levels, XP rules and titles
     coaching.ts          accounts, coach profiles, requests, notes (Supabase)
     snapshot.ts          the progress summary a member shares with their coach
     supabase.ts          Supabase client (supabase.web.ts for the web build)

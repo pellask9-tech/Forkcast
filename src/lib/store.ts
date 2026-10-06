@@ -61,16 +61,25 @@ export interface AppState {
   water: Record<string, number>;
   bodyChecks: BodyCheck[];
   training: Training;
+  /** The highest level the user has already been shown. 0 until the app first works it out. */
+  seenLevel: number;
 }
 
 /** Weekly program settings and the sessions ticked off in the current week. */
-export interface Training { days: DaysPerWeek; equipment: Equipment; week: string; done: string[] }
-const DEFAULT_TRAINING: Training = { days: 3, equipment: 'gym', week: '', done: [] };
+export interface Training {
+  days: DaysPerWeek;
+  equipment: Equipment;
+  week: string;
+  done: string[];
+  /** Every session ever ticked, as "week:dayId". Kept across weeks for XP. */
+  history: string[];
+}
+const DEFAULT_TRAINING: Training = { days: 3, equipment: 'gym', week: '', done: [], history: [] };
 
 const PREFIX = 'forkcast:v1:';
 let state: AppState = {
   ready: false, profile: null, customFoods: [], weights: [], picks: null, logs: {},
-  pro: false, proPlan: null, scanDay: '', scanCount: 0, water: {}, bodyChecks: [], training: DEFAULT_TRAINING,
+  pro: false, proPlan: null, scanDay: '', scanCount: 0, water: {}, bodyChecks: [], training: DEFAULT_TRAINING, seenLevel: 0,
 };
 const listeners = new Set<() => void>();
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
@@ -102,7 +111,7 @@ export function defaultSlot(): SlotKey {
 /* ---------------- Persistence ---------------- */
 const save = (key: string, value: unknown) => { AsyncStorage.setItem(PREFIX + key, JSON.stringify(value)).catch(() => {}); };
 const persistProfile = () => save('profile', { profile: state.profile, customFoods: state.customFoods, weights: state.weights, picks: state.picks });
-const persistMeta = () => save('meta', { pro: state.pro, proPlan: state.proPlan, scanDay: state.scanDay, scanCount: state.scanCount });
+const persistMeta = () => save('meta', { pro: state.pro, proPlan: state.proPlan, scanDay: state.scanDay, scanCount: state.scanCount, seenLevel: state.seenLevel });
 const persistLog = (date: string) => save('log:' + date, state.logs[date] ?? []);
 const persistWater = () => save('water', state.water);
 const persistBody = () => save('body', state.bodyChecks);
@@ -128,12 +137,17 @@ export async function hydrate() {
         patch.proPlan = v.proPlan ?? null;
         patch.scanDay = v.scanDay ?? '';
         patch.scanCount = v.scanCount ?? 0;
+        patch.seenLevel = Number(v.seenLevel) || 0;
       } else if (k === 'water' && v && typeof v === 'object') {
         patch.water = v;
       } else if (k === 'body' && Array.isArray(v)) {
         patch.bodyChecks = v;
       } else if (k === 'training' && v && typeof v === 'object') {
-        patch.training = { ...DEFAULT_TRAINING, ...v, done: Array.isArray(v.done) ? v.done : [] };
+        patch.training = {
+          ...DEFAULT_TRAINING, ...v,
+          done: Array.isArray(v.done) ? v.done : [],
+          history: Array.isArray(v.history) ? v.history : [],
+        };
       } else if (k.startsWith('log:') && Array.isArray(v)) {
         patch.logs![k.slice(4)] = v;
       }
@@ -185,6 +199,11 @@ export function logWeight(kg: number) {
 
 export function setPro(pro: boolean, plan: string | null) {
   set({ pro, proPlan: plan });
+  persistMeta();
+}
+
+export function setSeenLevel(level: number) {
+  set({ seenLevel: level });
   persistMeta();
 }
 
@@ -248,8 +267,12 @@ export function doneThisWeek(t: Training): string[] {
 }
 
 export function toggleWorkout(dayId: string) {
+  const week = weekKey(new Date());
   const done = doneThisWeek(state.training);
-  const next = done.includes(dayId) ? done.filter(d => d !== dayId) : [...done, dayId];
-  set({ training: { ...state.training, week: weekKey(new Date()), done: next } });
+  const key = `${week}:${dayId}`;
+  const ticking = !done.includes(dayId);
+  const next = ticking ? [...done, dayId] : done.filter(d => d !== dayId);
+  const history = ticking ? [...new Set([...state.training.history, key])] : state.training.history.filter(h => h !== key);
+  set({ training: { ...state.training, week, done: next, history: history.slice(-1000) } });
   persistTraining();
 }
