@@ -83,6 +83,8 @@ export function useAppState(): AppState {
   return useSyncExternalStore(subscribe, getState, getState);
 }
 export const readState = getState;
+/** Listen for any state change (used to keep a coach's view of your progress fresh). */
+export const subscribeState = subscribe;
 
 /* ---------------- Dates ---------------- */
 export function dstr(d: Date) {

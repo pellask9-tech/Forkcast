@@ -42,8 +42,11 @@ describe('buildProgram', () => {
     expect(upper.exercises.filter(e => e.group === 'shoulders')).toHaveLength(2);
     expect(upper.exercises.find(e => e.group === 'shoulders')!.sets.startsWith('4 × ')).toBe(true);
     expect(upper.exercises.find(e => e.group === 'chest')!.sets.startsWith('2 × ')).toBe(true);
-    // The body check's own exercise suggestion is used first.
+    // The body check's own exercise suggestion is used first, without a near-duplicate from the library.
     expect(p.days[1].exercises[0].name).toBe('Goblet squats');
+    const quadMoves = p.days.flatMap(d => d.exercises.filter(e => e.group === 'quads').map(e => e.name));
+    expect(quadMoves).not.toContain('Goblet or back squats');
+    expect(quadMoves).toContain('Leg press');
   });
 
   it('keeps sessions to 7 exercises at most, in every split', () => {

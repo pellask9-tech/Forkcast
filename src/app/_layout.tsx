@@ -6,6 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { COACHING } from '@/config';
+import { initCoaching } from '@/lib/coaching';
 import { hydrate, useAppState } from '@/lib/store';
 import { useIsDark, usePalette } from '@/theme';
 
@@ -20,6 +22,8 @@ export default function RootLayout() {
   const dark = useIsDark();
 
   useEffect(() => { hydrate(); }, []);
+  // After the local data loads, restore the coaching session (it may switch on the coach's Pro perk).
+  useEffect(() => { if (ready && COACHING) initCoaching(); }, [ready]);
   const loaded = (fontsLoaded || !!fontError) && ready;
   useEffect(() => { if (loaded) SplashScreen.hideAsync(); }, [loaded]);
   if (!loaded) return null;
@@ -40,6 +44,10 @@ export default function RootLayout() {
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="body-check" options={{ presentation: 'modal' }} />
         <Stack.Screen name="program" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="account" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="coach-edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="coaches/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="client/[id]" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );

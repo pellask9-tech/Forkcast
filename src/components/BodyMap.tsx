@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { STATUS_LABEL } from '@/components/BodyCheckResult';
@@ -10,8 +10,11 @@ import { F, Palette, usePalette } from '@/theme';
 
 /**
  * Front and back body figures with each rated muscle group coloured by its status.
- * Tap a muscle to see the note from the body check.
+ * Tap a muscle (or its name below the figures) to see the note from the body check.
  */
+
+// react-native-svg can't handle taps on shapes in the web build, so there the name chips do the job.
+const TAPPABLE_SHAPES = Platform.OS !== 'web';
 
 type Shape =
   | { k: 'e'; cx: number; cy: number; rx: number; ry: number }
@@ -78,7 +81,7 @@ function Figure({ parts, label, statusOf, selected, onSelect }: {
   const pal = usePalette();
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
-      <Svg viewBox="0 0 120 250" width="100%" height={250} accessible={false}>
+      <Svg viewBox="0 0 120 250" width="100%" height={250}>
         {parts.map((p, i) => {
           const s = p.group ? statusOf(p.group) : undefined;
           const c = p.group ? fillFor(pal, s) : { fill: pal.soft, stroke: pal.line, dash: undefined };
@@ -88,7 +91,7 @@ function Figure({ parts, label, statusOf, selected, onSelect }: {
             stroke: isSel ? pal.ink : c.stroke,
             strokeWidth: isSel ? 2.5 : 1.2,
             strokeDasharray: c.dash,
-            onPress: p.group ? () => onSelect(p.group!) : undefined,
+            onPress: TAPPABLE_SHAPES && p.group ? () => onSelect(p.group!) : undefined,
           };
           const sh = p.shape;
           if (sh.k === 'e') return <Ellipse key={i} cx={sh.cx} cy={sh.cy} rx={sh.rx} ry={sh.ry} {...props} />;
@@ -129,6 +132,20 @@ export function BodyMap({ groups }: { groups: MuscleGroup[] }) {
               <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: c.fill, borderWidth: 1.5, borderColor: c.stroke, borderStyle: c.dash ? 'dashed' : 'solid' }} />
               <T v="tiny">{STATUS_LABEL[s]}</T>
             </View>
+          );
+        })}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+        {groups.map(g => {
+          const on = g.id === selected;
+          const c = fillFor(pal, g.status);
+          return (
+            <Pressable key={g.id} onPress={() => setSelected(g.id as GroupId)} accessibilityRole="button" accessibilityState={{ selected: on }}
+              accessibilityLabel={`${g.name}, ${STATUS_LABEL[g.status]}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1.5, borderColor: on ? pal.ink : pal.line, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.fill, borderWidth: 1, borderColor: c.stroke, borderStyle: c.dash ? 'dashed' : 'solid' }} />
+              <T v="tiny">{g.name}</T>
+            </Pressable>
           );
         })}
       </View>

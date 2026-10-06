@@ -9,12 +9,61 @@ AI photo scanning and a subscription paywall. Built with Expo (SDK 57) and Expo 
 | --- | --- |
 | **Today** | Nutrition Facts label for the day (calories, macros, fiber, sugars, sodium, 10 vitamins and minerals), meal log, search and scan buttons |
 | **Meal plan** | A full day of meals sized to your targets, with swap, shuffle and "log to today" |
-| **Body** | Goal (cut or bulk), pace, stats, BMI with scale, calorie and macro targets, weight log, Pro status |
+| **Body** | Goal (cut or bulk), pace, stats, BMI with scale, calorie and macro targets, weekly program, weight log, Pro status |
+| **Weekly program** (modal) | A 3, 4 or 5-day gym or home plan built from your latest body check: "train more" muscles go first with extra sets, strong points get maintenance sets, cuts add cardio. Tick off sessions each week |
+| **Body check** (modal) | Front/back photos → a body map coloured by muscle (train more, on track, strong point), a coach's note per muscle, and focus exercises |
+| **Coach** (tab, when coaching is on) | Coach directory, sign in, your coach and their notes. Coaches get a dashboard with requests and clients |
+| **Coach profile** (modal) | Coaches add their photo, headline, bio, specialties, certifications and awards, then publish |
 | **Scan** (modal) | Take or pick a photo, Claude identifies each food and estimates grams and nutrients, you review and add |
 | **Paywall** (modal) | Pro plans. Uses a test store in Expo Go, so no money moves |
 
 The scan server lives in `src/app/api/scan+api.ts`. It runs on your computer while `npx expo start`
 is running, so your API key never ships inside the app.
+
+## Coaching (optional)
+
+Coaches create a public profile with their certifications and awards. Members browse coaches, send a
+request, and once the coach accepts, the coach sees the member's progress and can send notes.
+Coach accounts also unlock every Pro feature for free.
+
+It needs a free [Supabase](https://supabase.com) project for accounts and shared data. Until you add
+the keys, the Coach tab stays hidden and the app works exactly as before.
+
+1. Create a project at [database.new](https://database.new).
+2. In the project, open **SQL Editor**, paste all of `supabase/schema.sql`, and click **Run**.
+   This creates the tables and the security rules. It's safe to run again after updates.
+3. In **Project Settings → API**, copy the **Project URL** and the **publishable** (or anon) key into
+   `.env.local`:
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+   ```
+   Never put the database password or a secret / service_role key in the app.
+4. Restart `npx expo start`. The **Coach** tab appears.
+5. For EAS builds, add the same two values as EAS environment variables
+   (`npx eas-cli@latest env:create`), or run `npx eas-cli@latest integrations:supabase:connect`.
+
+**Verifying coaches.** Anyone can sign up as a coach, but only you can give the green **Verified**
+badge. After checking a coach's certificates, open **Table Editor → coach_profiles** in Supabase and
+set `verified` to `true` for that coach. The app can't change this field.
+
+**Email confirmation.** New Supabase projects ask people to confirm their email before signing in.
+The app handles this. To skip it while testing, turn off **Confirm email** under
+**Authentication → Providers → Email**.
+
+**What coaches can see.** Only while coaching is active: the member's goal, BMI and targets, daily
+calorie and protein totals for the last 14 days (not individual foods), weight log, body check
+results (never photos) and workout progress. Ending coaching deletes what was shared.
+
+**Testing the security rules.** `supabase/tests` checks 51 cases (for example, coaches can't verify
+themselves or read anyone who isn't their active client) against a local PostgreSQL:
+```bash
+createdb forkcast_test
+for f in supabase/tests/00_supabase_stubs.sql supabase/schema.sql supabase/tests/10_helpers.sql supabase/tests/20_scenarios.sql; do
+  psql -d forkcast_test -q -f "$f"
+done
+```
+The last line printed should be `51 passed, 0 failed`.
 
 ## Run it in Expo Go
 
@@ -137,6 +186,12 @@ src/
     (tabs)/index.tsx     Today
     (tabs)/plan.tsx      Meal plan
     (tabs)/body.tsx      Body & BMI
+    (tabs)/coach.tsx     Coach tab: directory, your coach, coach dashboard
+    program.tsx          weekly training program
+    account.tsx          sign in / create account
+    coach-edit.tsx       coach's own profile editor
+    coaches/[id].tsx     public coach profile and coaching request
+    client/[id].tsx      coach's view of one client
     add.tsx              search and add food
     scan.tsx             photo scanner
     paywall.tsx          Pro plans
@@ -144,11 +199,18 @@ src/
   lib/
     foods.ts             food database and meal templates
     nutrition.ts         BMI, calorie and macro targets
-    plan.ts              meal plan builder
+    plan.ts              meal plan builder (sizes the meals you haven't logged to what's left today)
+    program.ts           weekly training program from the body check
+    coaching.ts          accounts, coach profiles, requests, notes (Supabase)
+    snapshot.ts          the progress summary a member shares with their coach
+    supabase.ts          Supabase client (supabase.web.ts for the web build)
     store.ts             app state saved on the device
     subscription.ts      test store (swap for RevenueCat)
     scan-client.ts       photo resize + call to the scan server
-  components/            UI pieces and the Nutrition Facts label
+  components/            UI pieces, the Nutrition Facts label, BodyMap and coach cards
+supabase/
+  schema.sql             tables and security rules for coaching (run once in Supabase)
+  tests/                 SQL tests for those rules
   theme.ts               colors (light and dark) and fonts
 ```
 

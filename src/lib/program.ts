@@ -120,12 +120,15 @@ export function buildProgram(opts: {
   const priority = [...new Set([...focusOrder, ...allIds.filter(id => status(id) === 'needs_work')])];
   const maintain = allIds.filter(id => status(id) === 'strong' && !priority.includes(id));
 
-  // Exercises the body check suggested for a group come first, then the library's.
+  // Exercises the body check suggested for a group come first, then the library's. A library move
+  // is skipped when a suggestion already covers the same movement (e.g. "Goblet squats" vs "Goblet or back squats").
   const suggested = (id: GroupId): Move[] =>
     (check?.focus ?? []).filter(f => f.group === id).flatMap(f => f.exercises.map(e => ({ name: e.name, reps: undefined })));
   const movesFor = (id: GroupId): Move[] => {
+    const fromCheck = suggested(id);
+    const covered = new Set(fromCheck.map(m => movementOf(m.name)).filter(Boolean));
     const seen = new Set<string>();
-    return [...suggested(id), ...LIBRARY[id][equipment]].filter(m => {
+    return [...fromCheck, ...LIBRARY[id][equipment].filter(m => !covered.has(movementOf(m.name)))].filter(m => {
       const k = m.name.trim().toLowerCase();
       if (!k || seen.has(k)) return false;
       seen.add(k);
@@ -177,14 +180,13 @@ export function buildProgram(opts: {
     };
   });
 
-  const name = (ids: GroupId[]) => ids.map(id => GROUP_NAMES[id].toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' and $1');
   const coachNotes: string[] = [];
   if (priority.length) {
     coachNotes.push(`We're bringing up your ${name(priority)}. They come first in each session, with an extra exercise and set, so they get your best energy.`);
   } else {
     coachNotes.push(check ? 'Your body check looks balanced, so this program trains everything evenly.' : 'This is a balanced program. Do a body check and I’ll tailor it to the muscles that need the most work.');
   }
-  if (maintain.length) coachNotes.push(`Your ${name(maintain)} ${maintain.length === 1 ? 'is a strong point' : 'are strong points'}, so ${maintain.length === 1 ? 'it gets' : 'they get'} two sets to hold on to it while the rest catches up.`);
+  if (maintain.length) coachNotes.push(`Your ${name(maintain)} ${maintain.length === 1 ? 'is a strong point' : 'are strong points'}, so ${maintain.length === 1 ? 'it gets two sets to hold on to it' : 'they get two sets to hold on to them'} while the rest catches up.`);
   coachNotes.push(goal === 'bulk'
     ? 'Pick a weight where the last 2 reps are hard. When you hit the top of the rep range on every set, go a little heavier next time.'
     : 'Keep your lifts heavy so you hold on to muscle while you lose fat. The walk after each session adds to your calorie deficit without wearing you out.');
@@ -192,6 +194,19 @@ export function buildProgram(opts: {
 
   return { days: dayList, priority, maintain, coachNotes, personalised: !!check };
 }
+
+const MOVEMENTS = ['squat', 'lunge', 'deadlift', 'thrust', 'bridge', 'curl', 'press', 'push-up', 'dip', 'raise', 'row', 'pulldown', 'pull-up', 'fly', 'plank', 'pushdown', 'kickback', 'step-up'];
+/** The basic movement an exercise name describes, e.g. "Goblet squats" → "squat". '' if unknown. */
+export function movementOf(name: string): string {
+  const n = name.toLowerCase();
+  return MOVEMENTS.find(m => n.includes(m)) ?? '';
+}
+
+/** "quads, shoulders and hamstrings" */
+export function listGroups(ids: GroupId[]): string {
+  return ids.map(id => GROUP_NAMES[id].toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' and $1');
+}
+const name = listGroups;
 
 /** Monday of the week containing `d`, as YYYY-MM-DD. Workout ticks reset each week. */
 export function weekKey(d: Date): string {

@@ -1,5 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
+import { COACHING } from '@/config';
 import { usePalette } from '@/theme';
 
 export default function TabsLayout() {
@@ -21,6 +22,10 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="body">
         <NativeTabs.Trigger.Label>Body</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="figure.stand" md="monitor_weight" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="coach" hidden={!COACHING}>
+        <NativeTabs.Trigger.Label>Coach</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="person.2.fill" md="groups" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
