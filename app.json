@@ -12,7 +12,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Forkcast uses the camera to scan your meals and estimate their nutrition.",
         "NSPhotoLibraryUsageDescription": "Forkcast lets you pick a meal photo to estimate its nutrition."
-      }
+      },
+      "bundleIdentifier": "com.yourname.forkcast"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +22,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.yourname.forkcast"
     },
     "web": {
       "output": "server",
@@ -49,6 +51,12 @@
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "owner": "rowii",
+    "extra": {
+      "eas": {
+        "projectId": "52636cd5-9623-4ea7-a3a9-b54716277415"
+      }
     }
   }
 }
