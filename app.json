@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Forkcast",
+    "slug": "forkcast",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "forkcast",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Forkcast uses the camera to scan your meals and estimate their nutrition.",
+        "NSPhotoLibraryUsageDescription": "Forkcast lets you pick a meal photo to estimate its nutrition."
+      },
+      "bundleIdentifier": "com.yourname.forkcast"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#14261C",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.yourname.forkcast"
+    },
+    "web": {
+      "output": "server",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#EDF1EC",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Forkcast uses the camera to scan your meals and estimate their nutrition.",
+          "photosPermission": "Forkcast lets you pick a meal photo to estimate its nutrition."
+        }
+      ],
+      "expo-sqlite"
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "reactCompiler": true
+    },
+    "owner": "rowii",
+    "extra": {
+      "eas": {
+        "projectId": "52636cd5-9623-4ea7-a3a9-b54716277415"
+      }
+    }
+  }
+}
