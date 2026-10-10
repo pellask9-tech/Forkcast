@@ -4,10 +4,10 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import { COACHING } from '@/config';
+import { COACHING, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/config';
 
 export const supabase: SupabaseClient | null = COACHING
-  ? createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!, process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  ? createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         storage: typeof window === 'undefined' ? undefined : window.localStorage,
         autoRefreshToken: typeof window !== 'undefined',

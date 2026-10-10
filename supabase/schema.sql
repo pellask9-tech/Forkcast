@@ -57,7 +57,7 @@ create table if not exists public.coach_profiles (
 );
 
 create or replace function public.touch_updated_at() returns trigger
-language plpgsql as $$ begin new.updated_at := now(); return new; end $$;
+language plpgsql set search_path = '' as $$ begin new.updated_at := now(); return new; end $$;
 drop trigger if exists coach_profiles_touch on public.coach_profiles;
 create trigger coach_profiles_touch before update on public.coach_profiles
   for each row execute function public.touch_updated_at();
@@ -82,7 +82,7 @@ create index if not exists coach_clients_coach on public.coach_clients (coach_id
 --   coach:  pending -> active | declined,  active -> ended
 --   client: pending -> ended (cancel),     active -> ended
 create or replace function public.check_coach_client_update() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 declare me uuid := auth.uid();
 begin
   -- No signed-in user means the SQL Editor or dashboard, i.e. you, the app owner.
@@ -229,6 +229,12 @@ grant select, insert, update, delete on public.client_snapshots to authenticated
 grant select, delete on public.coach_notes to authenticated;
 grant insert (coach_id, client_id, body) on public.coach_notes to authenticated;
 
+-- Functions in the public schema are callable over the API unless revoked. The access checks are
+-- needed by the policies above (which run as the signed-in user); nothing else should call these directly.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.is_active_coach_of(uuid), public.is_coach_link_of(uuid) from public, anon;
+grant execute on function public.is_active_coach_of(uuid), public.is_coach_link_of(uuid) to authenticated;
+
 -- A coach who has clients can't switch back to member while links are open.
 -- Their coach profile is unpublished when they do switch back.
 create or replace function public.check_profile_role() returns trigger
@@ -245,6 +251,7 @@ end $$;
 drop trigger if exists profiles_role on public.profiles;
 create trigger profiles_role before update on public.profiles
   for each row execute function public.check_profile_role();
+revoke execute on function public.check_profile_role() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- coach photos
 -- Public bucket for profile photos. Each coach can only write inside a folder named after their user id.

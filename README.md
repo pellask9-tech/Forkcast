@@ -49,22 +49,26 @@ Coaches create a public profile with their certifications and awards. Members br
 request, and once the coach accepts, the coach sees the member's progress and can send notes.
 Coach accounts also unlock every Pro feature for free.
 
-It needs a free [Supabase](https://supabase.com) project for accounts and shared data. Until you add
-the keys, the Coach tab stays hidden and the app works exactly as before.
+It runs on Forkcast's own free [Supabase](https://supabase.com) project, which is already set up
+(tables and security rules from `supabase/schema.sql`) and built into the app in `src/config.ts`.
+The address and publishable key there are public by design; the database rules keep data private.
+Never put the database password or a secret / service_role key in the app.
+
+To point the app at a different Supabase project instead:
 
 1. Create a project at [database.new](https://database.new).
 2. In the project, open **SQL Editor**, paste all of `supabase/schema.sql`, and click **Run**.
    This creates the tables and the security rules. It's safe to run again after updates.
 3. In **Project Settings → API**, copy the **Project URL** and the **publishable** (or anon) key into
-   `.env.local`:
+   `.env.local` (or EAS environment variables for builds, `npx eas-cli@latest env:create`):
    ```
    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
    ```
-   Never put the database password or a secret / service_role key in the app.
-4. Restart `npx expo start`. The **Coach** tab appears.
-5. For EAS builds, add the same two values as EAS environment variables
-   (`npx eas-cli@latest env:create`), or run `npx eas-cli@latest integrations:supabase:connect`.
+4. Restart `npx expo start`, or rebuild.
+
+To turn coaching off, set both values to empty. The Coach tab then disappears and the app works on
+the phone only.
 
 **Verifying coaches.** Anyone can sign up as a coach, but only you can give the green **Verified**
 badge. After checking a coach's certificates, open **Table Editor → coach_profiles** in Supabase and
