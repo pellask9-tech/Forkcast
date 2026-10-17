@@ -3,6 +3,9 @@
 A calorie, macro and micronutrient tracker with BMI-based targets, cut/bulk meal plans,
 AI photo scanning and a subscription paywall. Built with Expo (SDK 57) and Expo Router.
 
+This repo also holds **Florin**, a separate demo banking app, in [`bank/`](bank/README.md). It has its
+own packages and settings, so run its commands from that folder.
+
 ## What's inside
 
 | Screen | What it does |

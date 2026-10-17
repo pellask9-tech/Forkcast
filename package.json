@@ -62,6 +62,13 @@
     ],
     "testMatch": [
       "**/__tests__/**/*.test.tsx"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/bank/"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/bank/"
     ]
   }
 }
